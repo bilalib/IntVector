@@ -7,70 +7,56 @@
 #include <algorithm>
 #include <iostream>
 
-struct MaxEltTooBigError {};
+#include "PowerTable.h"
+
 
 template<typename IntType>
 class IntVector
 {
 private:
 
-  IntType container;
+  static PowerTable<IntType> table;
 
-  /*
-    The data is stored in base max_elt, where max_elt is given to the constructor.
-    powers stores all the powers of max_elt that fit in IntType, and powers[i] = max_elt^(i+1).
-  */
-  std::shared_ptr<const std::vector<IntType>> powers;
+  IntType container;
+  typename PowerTable<IntType>::PowerListHolder powers;
 
 public:
 
   IntVector(unsigned short max_elt_in) 
-  {
-    unsigned short capacity = calc_capacity(max_elt_in);
-    if (capacity < 2) {
-      throw MaxEltTooBigError();
-    }
-    std::vector<IntType> powers_vec(capacity);
-    powers_vec[0] = max_elt_in;
-    for (unsigned short i = 1; i < max_elt_in; ++i) {
-      powers_vec[i] = max_elt_in * powers_vec[i - 1];
-    }
-    powers = std::make_shared<const std::vector<IntType>>(powers_vec);
-  }
-
-  IntVector(std::shared_ptr<std::vector<IntType>> powers_in)
-    : powers(powers_in)
+    : powers(max_elt_in, table)
   {}
 
-  IntVector(const IntVector<IntType>& other) {
-    *this = other;
-  }
+  IntVector(const IntVector<IntType>& other)
+    : container(other.container), powers(other.powers)
+  {}
 
-  IntVector(const std::vector<unsigned short>& input) 
-    : IntVector(*std::max_element(input.begin(), input.end()))
+  IntVector(const std::vector<unsigned short> & input, unsigned short max_elt)
+    : IntVector(max_elt)
   {
     for (unsigned short i = 0; i < input.size(); ++i) {
       assign_to_empty(i, input[i]);
     }
   }
 
-  const std::shared_ptr<std::vector<IntType>> get_powers() const { return powers; }
+  IntVector(const std::vector<unsigned short>& input) 
+    : IntVector(input, *std::max_element(input.begin(), input.end()))
+  {}
 
   unsigned short get(unsigned short i) const {
-    return (container / powers->at(i)) % powers->at(0);
+    return (container % powers[i + 1]) / powers[i];
   }
 
   void assign_to_empty(unsigned short i, unsigned short number) {
-    container += number * (i == 0 ? 1 : powers->at(i - 1));
+    container += number * powers[i];
   }
 
   void assign(unsigned short i, unsigned short number) {
-    container -= get(i);
+    container -= container % powers[i + 1] - container % powers[i];
     assign_to_empty(i, number);
   }
 
   std::vector<unsigned short> vectorize() const {
-    std::vector<unsigned short> data(powers->size());
+    std::vector<unsigned short> data(powers.capacity());
     for (unsigned short i = 0; i < data.size(); ++i) {
       data[i] = get(i);
     }
@@ -104,3 +90,6 @@ private:
   }
 };
 
+// intializing the static member
+template<typename IntType>
+PowerTable<IntType> IntVector<IntType>::table = PowerTable<IntType>();
