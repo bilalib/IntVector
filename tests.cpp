@@ -4,6 +4,7 @@
 #include <limits>
 #include <string>
 #include <iostream>
+#include <sstream>
 
 #include "IntVector.h"
 
@@ -11,20 +12,21 @@ using namespace std;
 
 // utility functions for printing test info
 template<typename IntType>
-void print_list_helper(IntType last) {
-  cout << last << endl;
+void print_list_helper(ostream& os, IntType last) {
+  os << last << endl;
 }
 
 template<typename First, typename... Rest>
-void print_list_helper(const First& first, const Rest&... rest) {
-  cout << first << ", ";
-  print_list_helper(rest...);
+void print_list_helper(ostream& os, const First& first, const Rest&... rest) {
+  os << first << ", ";
+  print_list_helper(os, rest...);
 }
 
 template<typename... List>
-void print_list(string header, const List&... list) {
-  cout << header << endl;
-  print_list_helper(list...);
+const string print_list(const List&... list) {
+  stringstream buffer;
+  print_list_helper(buffer, list...);
+  return buffer.str();
 }
 
 // pt = PowerTable
@@ -34,11 +36,11 @@ void pt_find_or_build() {
   PowerTable<unsigned> table(false);
 
   for (unsigned short base = 2; base < 20; ++base) {
-    PowerTable<unsigned>::PowerList list(base);
-    for (unsigned short exp = 2; exp < list.capacity(); ++exp) {
+    PowerList<unsigned> list(base);
+    for (unsigned short exp = 2; exp < list.greatest_exponent(); ++exp) {
       unsigned actual = (unsigned)pow(base, exp);
       if (actual != list[exp]) {
-        print_list("base, exp, calculated, actual", base, exp, list[exp], actual);
+        cout << "base, exp, calculated, actual" << print_list(base, exp, list[exp], actual);
       }
       assert(actual == list[exp]);
     }
@@ -93,9 +95,6 @@ void iv_get() {
 
   for (unsigned i = 0; i < 7; ++i) {
     bool good = (b.get(i) == b[i] && b[i] == values[i]);
-    if (!good) {
-      print_list("get, subscript, actual", b.get(i), b[i], values[i]);
-    }
     assert(good);
   }
 
@@ -130,6 +129,39 @@ void iv_assign() {
 }
 
 
+void assert_equal_in_range(unsigned short start, unsigned short end, 
+                    const vector<unsigned short>& v, const vector<unsigned short>& w) {
+  for (; start < end; ++start) {
+    assert(v[start] == w[start]);
+  }
+}
+
+void iv_vectorize() {
+
+  IntVector<unsigned long long> a(10, 9876543210);
+
+  vector<unsigned short> v1({ 0,1,2,3,4,5,6,7,8,9 });
+  assert_equal_in_range(0, v1.size(), a.vectorize(), v1);
+
+  vector<unsigned short> v2({ 4, 5, 6, 7, 8, 9 });
+  assert_equal_in_range(0, v2.size(), a.vectorize(4, 10), v2);
+
+  vector<unsigned short> v3({ 4, 9, 3, 2, 2, 7 });
+  assert_equal_in_range(0, v3.size(), a.vectorize(v3), v3);
+
+}
+
+void iv_subscript_operator() {
+
+  IntVector<unsigned long long> a(25, { 0, 13, 19, 9, 22, 3, 4 });
+  a[3] = 10;
+  auto x = a[6] = a[4] = 9;
+  assert(x == 9);
+  assert(a == IntVector<unsigned long long>(25, { 0, 13, 19, 10, 9, 3, 9 }));
+
+}
+
+
 void test_int_vector() {
 
   iv_constructors_compile();
@@ -137,6 +169,8 @@ void test_int_vector() {
   iv_get();
   iv_assign_to_empty();
   iv_assign();
+  iv_vectorize();
+  iv_subscript_operator();
 
 }
 

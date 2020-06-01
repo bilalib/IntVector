@@ -8,25 +8,19 @@
 #include <iostream>
 
 #include "PowerTable.h"
+#include "PowerList.h"
 
 
 template<typename IntType>
 class IntVector
 {
 
-  friend class PowerTable<IntType>;
-
-
-protected:
-
-  static PowerTable<IntType> table;
-  typename PowerTable<IntType>::PowerList powers;
-
 private:
 
+  PowerList<IntType> powers;
   IntType container;
 
-
+  
 public:
 
 
@@ -34,11 +28,10 @@ public:
     : powers(max_elt), container(container_in)
   {}
 
-  IntVector(unsigned short max_elt) 
+  IntVector(unsigned short max_elt)
     : IntVector(max_elt, 0)
   {}
-
-
+  
   IntVector(unsigned short max_elt, const std::vector<unsigned short>& input)
     : IntVector(max_elt)
   {
@@ -46,12 +39,6 @@ public:
       assign_to_empty(i, input[i]);
     }
   }
-
-
-  IntVector(const std::vector<unsigned short>& input)
-    : IntVector(*std::max_element(input.begin(), input.end()), input)
-  {}
-
 
   IntVector(const IntVector<IntType>& other)
     : powers(other.powers), container(other.container)
@@ -70,15 +57,30 @@ public:
   }
 
 
-  unsigned short size() const { return powers.capacity(); }
+  // size is the number of elements in an IntVector with an IntType container
+  unsigned short size() const { return powers.greatest_exponent(); }
+
+
+  static unsigned short size(unsigned short max_elt) {
+    return PowerTable<IntType>::calc_greatest_exponent(max_elt);
+  }
+
+
   IntType get_container() const { return container; }
+
+
+  /*
+    This allows an IntVector to be treated as an IntType for comparisons, arithmetic,
+    hashing, etc. 
+    Note that comparisons between IntVectors with different max elements are not defined.
+  */
   operator IntType() const { return container; }
 
 
   // returns an IntType representing the subvector in the range [start, end)
   IntType slice(unsigned short start, unsigned short end) const {
     IntType result = container;
-    if (end <= powers.capacity()) {
+    if (end <= powers.greatest_exponent()) {
       result %= powers[end];
     }
     return result / powers[start];
@@ -103,28 +105,41 @@ public:
   }
 
 
+  template <typename T>
+  bool operator==(const std::vector<T>& vec) const {
+    return *this == IntVector<IntType>(powers[1], vec);
+  }
+
+
   // Returns a vector of values in the range [start, end).
   // More efficient than the version that takes an arbitrary set of indices
   std::vector<unsigned short> vectorize(unsigned short start, unsigned short end) const {
+
     std::vector<unsigned short> data(end - start);
-    IntType remaining = slice(start, end);
-    while (start < end--) {
-      IntType magnitude = powers[end];
-      data[end] = remaining / magnitude;
-      remaining %= magnitude;
+    IntType result = container;
+    if (end <= powers.greatest_exponent()) {
+      result %= powers[end];
     }
+
+    for (int i = data.size() - 1; i >= 0; --i) {
+      --end;
+      IntType magnitude = powers[end];
+      data[i] = result / magnitude;
+      result %= magnitude;
+    }
+
     return data;
   }
 
 
   // returns a vector of all values
   std::vector<unsigned short> vectorize() const {
-    return vectorize(0, powers.capacity());
+    return vectorize(0, powers.greatest_exponent());
   }
 
 
   // Returns vector of values at indicies specified by vector of indices
-  std::vector<unsigned short> vectorize(std::vector<unsigned short>& indices) const {
+  std::vector<unsigned short> vectorize(const std::vector<unsigned short>& indices) const {
     std::vector<unsigned short> data;
     data.reserve(indices.size());
     for (unsigned short i : indices) {
@@ -142,12 +157,13 @@ public:
     std::cout << std::endl;
   }
 
+
   /*
     The IdxReference class allows overloading the assignment (=) operator.
      It can't be overloaded normally because we can't return a reference 
-     to part of our IntType container.
+     to part of an integer
   */
-  struct IdxReference {
+  class IdxReference {
   private:
     IntVector& int_vector;
     unsigned short idx;
@@ -156,7 +172,9 @@ public:
     IdxReference(IntVector& int_vector_in, unsigned short idx_in)
       : int_vector(int_vector_in), idx(idx_in)
     {}
+
     operator unsigned short() const { return int_vector.get(idx); }
+
     unsigned short operator=(unsigned short new_value) {
       int_vector.assign(idx, new_value);
       return *this;
@@ -175,10 +193,3 @@ public:
 
 
 };
-
-// intializing the static member
-template<typename IntType>
-PowerTable<IntType> IntVector<IntType>::table = PowerTable<IntType>();
-
-template<typename IntType>
-PowerTable<IntType>* PowerTable<IntType>::PowerList::power_table = &IntVector<IntType>::table;
