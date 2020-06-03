@@ -23,7 +23,7 @@ private:
   
 public:
 
-
+  // below: constructors
   IntVector(unsigned short max_elt, IntType container_in)
     : powers(max_elt), container(container_in)
   {}
@@ -31,18 +31,34 @@ public:
   IntVector(unsigned short max_elt)
     : IntVector(max_elt, 0)
   {}
+
   
-  IntVector(unsigned short max_elt, const std::vector<unsigned short>& input)
+  // below: constructors to initialize vector
+  template <typename It>
+  IntVector(unsigned short max_elt, It begin, It end)
     : IntVector(max_elt)
   {
-    for (unsigned short i = 0; i < input.size(); ++i) {
-      assign_to_empty(i, input[i]);
+    for (unsigned short i = 0; begin != end; ++begin, ++i) {
+      assign_to_empty(i, *begin);
     }
   }
+
+  template <typename T>
+  IntVector(unsigned short max_elt, const std::vector<T>& input)
+    : IntVector(max_elt, input.begin(), input.end())
+  {}
+
+  template <typename T>
+  IntVector(unsigned short max_elt, std::initializer_list<T> input)
+    : IntVector(max_elt, input.begin(), input.end())
+  {}
+  // above: constructors to initialize vector
+
 
   IntVector(const IntVector<IntType>& other)
     : powers(other.powers), container(other.container)
   {}
+  // above: constructors
 
 
   void swap(IntVector& other) {
@@ -157,7 +173,7 @@ public:
     std::cout << std::endl;
   }
 
-
+  
   /*
     The IdxReference class allows overloading the assignment (=) operator.
      It can't be overloaded normally because we can't return a reference 
@@ -169,6 +185,7 @@ public:
     unsigned short idx;
 
   public:
+
     IdxReference(IntVector& int_vector_in, unsigned short idx_in)
       : int_vector(int_vector_in), idx(idx_in)
     {}
@@ -179,6 +196,8 @@ public:
       int_vector.assign(idx, new_value);
       return *this;
     }
+
+    unsigned short get_idx() const { return idx; }
   };
 
 

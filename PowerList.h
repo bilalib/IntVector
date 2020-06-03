@@ -65,7 +65,7 @@ public:
     return it->second.powers[exponent - 2];
   }
 
-
+  
   unsigned short greatest_exponent() const {
     return (unsigned short)it->second.powers.size() + 1;
   }
