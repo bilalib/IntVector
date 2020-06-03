@@ -1,6 +1,7 @@
 #include "CompressedVector.h"
 using namespace std;
-using CvIt = CompressedVector::Iterator;
+using Iv = IntVector<unsigned long long>;
+using VectorType = std::vector<Iv>;
 
 // below: index conversion functions
 pair<size_t, unsigned short> CompressedVector::convert_idx(unsigned long long idx) const {
@@ -28,7 +29,7 @@ CompressedVector::Iterator::Iterator(const CompressedVector::Iterator& other)
   : vec(other.vec), it(other.it), subvector_idx(other.subvector_idx)
 {}
 
-IntVector<unsigned long long>::IdxReference CompressedVector::Iterator::operator*() {
+Iv::IdxReference CompressedVector::Iterator::operator*() {
   return (*it)[subvector_idx];
 }
 
@@ -62,7 +63,11 @@ CompressedVector::Iterator CompressedVector::Iterator::operator+(size_t i) {
 CompressedVector::Iterator CompressedVector::Iterator::operator-(size_t i) {
   size_t decreased = subvector_idx - i;
   auto new_it = it + decreased / vec->subvector_capacity;
-  unsigned short new_subvector_idx = vec->subvector_capacity + decreased % vec->subvector_capacity;
+  unsigned short new_subvector_idx = decreased % vec->subvector_capacity;
+  if (new_subvector_idx < 0) {
+    new_subvector_idx += vec->subvector_capacity;
+    --new_it;
+  }
   return Iterator(vec, new_it, new_subvector_idx);
 }
 
@@ -74,9 +79,9 @@ CompressedVector::Iterator& CompressedVector::Iterator::operator-=(size_t i) {
   return *this = *this - i;
 }
 
-IntVector<unsigned long long>::IdxReference CompressedVector::Iterator::operator[](size_t i) {
+Iv::IdxReference CompressedVector::Iterator::operator[](size_t i) {
   auto idx = vec->convert_idx(i);
-  return IntVector<unsigned long long>::IdxReference(vec->data[idx.first], idx.second);
+  return Iv::IdxReference(vec->data[idx.first], idx.second);
 }
 
 void CompressedVector::Iterator::swap(Iterator& other) {
@@ -119,7 +124,7 @@ bool CompressedVector::Iterator::operator>=(const Iterator& other) const {
 
 // below: constructors
 CompressedVector::CompressedVector(unsigned short max_elt_in)
-  : max_elt(max_elt_in), last_subvector_end(0), subvector_capacity(IntVector<unsigned long long>::size(max_elt))
+  : max_elt(max_elt_in), last_subvector_end(0), subvector_capacity(Iv::size(max_elt))
 {}
 
 template<typename It>
@@ -156,7 +161,7 @@ size_t CompressedVector::size() const {
 }
 
 template<typename T>
-IntVector<unsigned long long>::IdxReference CompressedVector::operator[](T idx) {
+Iv::IdxReference CompressedVector::operator[](T idx) {
   return begin()[idx];
 }
 

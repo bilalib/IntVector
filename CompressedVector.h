@@ -11,7 +11,8 @@ private:
   unsigned short max_elt;
 
   // just using unsigned long long for every vector
-  using VectorType = std::vector<IntVector<unsigned long long>>;
+  using Iv = IntVector<unsigned long long>;
+  using VectorType = std::vector<Iv>;
   VectorType data;
 
   // 1 + index of last assigned element of last subvector
@@ -51,12 +52,12 @@ public:
   void push_back(unsigned short input);
 
   template<typename T>
-  IntVector<unsigned long long>::IdxReference operator[](T idx);
+  Iv::IdxReference operator[](T idx);
 
   template<typename T>
-  IntVector<unsigned long long>::IdxReference at(T idx);
+  Iv::IdxReference at(T idx);
 
-  IntVector<unsigned long long>::IdxReference back();
+  Iv::IdxReference back();
   void pop_back();
 
   template<typename T>
@@ -83,7 +84,7 @@ public:
     void swap(Iterator& other);
     Iterator& operator=(Iterator other);
 
-    IntVector<unsigned long long>::IdxReference operator*();
+    Iv::IdxReference operator*();
     Iterator& operator++();
     Iterator& operator--();
 
@@ -93,7 +94,7 @@ public:
     Iterator& operator+=(size_t i);
     Iterator& operator-=(size_t i);
 
-    IntVector<unsigned long long>::IdxReference operator[](size_t i);
+    Iv::IdxReference operator[](size_t i);
 
     bool operator==(const Iterator& other) const;
     bool operator!=(const Iterator& other) const;
