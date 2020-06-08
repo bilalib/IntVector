@@ -6,7 +6,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "IntVector.h"
+#include "CompressedVector.h"
 
 using namespace std;
 
@@ -175,12 +175,50 @@ void test_int_vector() {
 }
 
 
+// cv = compressed vector
+
+void cv_constructors_compile() {
+  CompressedVector(4);
+  CompressedVector(5, { 0, 1, 2, 3, 4 });
+  CompressedVector(5, vector<unsigned short>{ 0, 1, 2, 3, 4 });
+
+}
+
+void cv_constructors_correct() {
+  vector<int> v({ 0, 4, 1, 1, 1, 3, 0, 3, 4 });
+  CompressedVector a(5, v);
+  for (int i = 0; i < v.size(); ++i) {
+    assert(a[i] == v[i]);
+  }
+}
+
+void test_push_back() {
+  CompressedVector a(100);
+  for (int i = 0; i < 100; ++i) {
+    a.push_back(i);
+  }
+  for (int i = 0; i < 100; ++i) {
+    auto s = a.size();
+    assert(a.size() == 100);
+  }
+  for (int i = 0; i < 100; ++i) {
+    assert(a[i] == i);
+  }
+}
+
+void test_compressed_vector() {
+  cv_constructors_compile();
+  test_push_back();
+}
+
+
 
 
 int main() {
 
   test_power_table();
   test_int_vector();
+  test_compressed_vector();
 
   return 0;
 }

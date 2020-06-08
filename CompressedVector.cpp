@@ -1,19 +1,19 @@
 #include "CompressedVector.h"
+
 using namespace std;
-using Iv = IntVector<unsigned long long>;
+using IntType = unsigned long long;
+using Iv = IntVector<IntType>;
 using VectorType = std::vector<Iv>;
 
-// below: index conversion functions
-pair<size_t, unsigned short> CompressedVector::convert_idx(unsigned long long idx) const {
-  return { idx / subvector_capacity, idx % subvector_capacity };
+size_t CompressedVector::convert_idx(size_t subvector, 
+  unsigned short idx_in_subvector) const {
+  if (subvector == 0) {
+    return idx_in_subvector;
+  }
+  return subvector_capacity * (subvector - 1) + idx_in_subvector;
 }
 
-unsigned long long CompressedVector::convert_idx(unsigned long long subvector, 
-  unsigned short const idx_in_subvector) const {
-  return subvector_capacity * subvector + idx_in_subvector;
-}
-
-unsigned long long CompressedVector::convert_idx(pair<size_t, unsigned short> idx) const {
+size_t CompressedVector::convert_idx(pair<size_t, unsigned short> idx) const {
   return convert_idx(idx.first, idx.second);
 }
 // above: index conversion functions
@@ -80,8 +80,8 @@ CompressedVector::Iterator& CompressedVector::Iterator::operator-=(size_t i) {
 }
 
 Iv::IdxReference CompressedVector::Iterator::operator[](size_t i) {
-  auto idx = vec->convert_idx(i);
-  return Iv::IdxReference(vec->data[idx.first], idx.second);
+  auto idx = div(i, vec->subvector_capacity);
+  return Iv::IdxReference(vec->data[idx.quot], idx.rem);
 }
 
 void CompressedVector::Iterator::swap(Iterator& other) {
@@ -104,11 +104,11 @@ bool CompressedVector::Iterator::operator!=(const Iterator& other) const {
 }
 
 bool CompressedVector::Iterator::operator<(const Iterator& other) const {
-  return it < other.it && subvector_idx < other.subvector_idx;
+  return it < other.it || (it == other.it && subvector_idx < other.subvector_idx);
 }
 
 bool CompressedVector::Iterator::operator>(const Iterator& other) const {
-  return it > other.it && subvector_idx > other.subvector_idx;
+  return it > other.it || (it == other.it && subvector_idx > other.subvector_idx);
 }
 
 bool CompressedVector::Iterator::operator<=(const Iterator& other) const {
@@ -121,53 +121,21 @@ bool CompressedVector::Iterator::operator>=(const Iterator& other) const {
 // above: iterator
 
 
-
-// below: constructors
-CompressedVector::CompressedVector(unsigned short max_elt_in)
-  : max_elt(max_elt_in), last_subvector_end(0), subvector_capacity(Iv::size(max_elt))
-{}
-
-template<typename It>
-CompressedVector::CompressedVector(unsigned short max_elt_in, It input_begin, It input_end)
-  : CompressedVector(max_elt_in)
-{
-  reserve(input_end - input_begin);
-  for (; input_begin != input_end; ++input_begin) {
-    push_back(*input_begin);
-  }
-}
-
-template<typename T>
-CompressedVector::CompressedVector(unsigned short max_elt_in, const std::vector<T>& input)
-  : CompressedVector(max_elt_in, input.begin(), input.end())
-{}
-
-template<typename T>
-CompressedVector::CompressedVector(unsigned short max_elt_in, initializer_list<T> input)
-  : CompressedVector(max_elt_in, input.begin(), input.end())
-{}
-// above: constructors
-
 CompressedVector::Iterator CompressedVector::begin() {
-  return Iterator(this, this->begin, 0);
+  return Iterator(this, data.begin(), 0);
 }
 
 CompressedVector::Iterator CompressedVector::end() {
-  return Iterator(this, this->end, 0);
+  return Iterator(this, data.end(), 0);
 }
 
 size_t CompressedVector::size() const {
-  return subvector_capacity * data.size() + last_subvector_end;
-}
-
-template<typename T>
-Iv::IdxReference CompressedVector::operator[](T idx) {
-  return begin()[idx];
+  return convert_idx(data.size(), last_subvector_end);
 }
 
 void CompressedVector::push_back(unsigned short input) {
-  if (last_subvector_end == subvector_capacity) {
-    data.emplace_back(input);
+  if (last_subvector_end == subvector_capacity || data.empty()) {
+    data.emplace_back(max_elt, input);
     last_subvector_end = 1;
   }
   else {
@@ -182,26 +150,27 @@ void CompressedVector::pop_back() {
     last_subvector_end = (data.size() == 0 ? 0 : subvector_capacity);
   }
   else {
-    data.back().assign(last_subvector_end - 1, 0);
     --last_subvector_end;
   }
 }
+Iv::IdxReference CompressedVector::back() {
+  return data.back()[last_subvector_end - 1];
+}
 
-template<typename T>
-unsigned long long CompressedVector::calc_size(T size_in) const {
-  auto breakdown = convert_idx(new_size);
-  if (breakdown.second != 0) {
-    ++breakdown.first;
+Iv::IdxReference CompressedVector::at(size_t subvector, unsigned short idx_in_subvector) {
+  return *Iterator(this, data.begin() + subvector, idx_in_subvector);
+}
+
+bool CompressedVector::operator==(const CompressedVector& other) const {
+  size_t vector_size = size();
+  if (vector_size != other.size()) {
+    return false;
   }
-  return breakdown.first;
+  for (size_t i = 0; i < vector_size; ++i) {
+    if (at(i) != other.at(i)) {
+      return false;
+    }
+  }
+  return true;
 }
 
-template<typename T>
-void CompressedVector::reserve(T new_size) {
-  data.reserve(calc_size(new_size);
-}
-
-template<typename T>
-void CompressedVector::resize(T new_size) {
-  data.resize(calc_size(new_size));
-}

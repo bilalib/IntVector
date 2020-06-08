@@ -11,8 +11,10 @@ private:
   unsigned short max_elt;
 
   // just using unsigned long long for every vector
-  using Iv = IntVector<unsigned long long>;
+  using IntType = unsigned long long;
+  using Iv = IntVector<IntType>;
   using VectorType = std::vector<Iv>;
+
   VectorType data;
 
   // 1 + index of last assigned element of last subvector
@@ -24,47 +26,82 @@ private:
 
 private:
 
-  std::pair<size_t, unsigned short> convert_idx(unsigned long long idx) const;
-  unsigned long long convert_idx(unsigned long long subvector, unsigned short const idx_in_subvector) const;
-  unsigned long long convert_idx(std::pair<size_t, unsigned short> idx) const;
+  size_t convert_idx(size_t subvector, unsigned short idx_in_subvector) const;
+  size_t convert_idx(std::pair<size_t, unsigned short> idx) const;
 
-  template <typename T>
-  unsigned long long calc_size(T size_in) const;
+
+  template<typename T>
+  size_t calc_size(T size_in) const {
+    auto breakdown = div(size_in, subvector_capacity);
+    if (breakdown.rem != 0) {
+      ++breakdown.quot;
+    }
+    return breakdown.quot;
+  }
 
 public:
 
   // below: constructors
-  CompressedVector(unsigned short max_elt_in);
+  CompressedVector(unsigned short max_elt_in)
+    : max_elt(max_elt_in), last_subvector_end(0), subvector_capacity(Iv::size(max_elt))
+  {}
 
   template<typename It>
-  CompressedVector(unsigned short max_elt_in, It input_begin, It input_end);
+  CompressedVector(unsigned short max_elt_in, It input_begin, It input_end)
+    : CompressedVector(max_elt_in)
+  {
+    reserve(input_end - input_begin);
+    for (; input_begin != input_end; ++input_begin) {
+      push_back(*input_begin);
+    }
+  }
 
   template<typename T>
-  CompressedVector(unsigned short max_elt_in, const std::vector<T>& input);
+  CompressedVector(unsigned short max_elt_in, const std::vector<T>& input)
+    : CompressedVector(max_elt_in, input.begin(), input.end())
+  {}
+
 
   template<typename T>
-  CompressedVector(unsigned short max_elt_in, std::initializer_list<T> input);
+  CompressedVector(unsigned short max_elt_in, std::initializer_list<T> input)
+    : CompressedVector(max_elt_in, input.begin(), input.end())
+  {}
+
   // above: constructors
 
 
   size_t size() const;
-
   void push_back(unsigned short input);
-
-  template<typename T>
-  Iv::IdxReference operator[](T idx);
-
-  template<typename T>
-  Iv::IdxReference at(T idx);
-
   Iv::IdxReference back();
   void pop_back();
+  bool operator==(const CompressedVector& other) const;
+  Iv::IdxReference at(size_t subvector, unsigned short idx_in_subvector);
+
 
   template<typename T>
-  void reserve(T new_size);
+  Iv::IdxReference operator[](T idx) {
+    return begin()[idx];
+  }
 
   template<typename T>
-  void resize(T new_size);
+  Iv::IdxReference at(T idx) {
+    return data[idx];
+  }
+
+  template<typename T>
+  Iv::IdxReference at(T idx) const {
+    return data[idx];
+  }
+
+  template<typename T>
+  void reserve(T new_size) {
+    data.reserve(calc_size(new_size));
+  }
+
+  template<typename T>
+  void resize(T new_size) {
+    data.resize(calc_size(new_size));
+  }
 
 
 

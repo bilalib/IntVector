@@ -67,7 +67,7 @@ public:
 
   
   unsigned short greatest_exponent() const {
-    return (unsigned short)it->second.powers.size() + 1;
+    return (unsigned short)(it->second.powers.size()) + 1;
   }
 
 
